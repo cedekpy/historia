@@ -2,63 +2,56 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Dokończ Historię!</title>
+<title>Dokończ Historię Online!</title>
 <style>
-  body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; background: #121212; color: #f1f1f1; }
-  h1 { color: #f39c12; text-align: center; }
-  p { color: #cccccc; }
-  #story { border: 2px solid #f39c12; padding: 15px; min-height: 200px; margin-bottom: 15px; background: #1e1e1e; }
+  body { font-family: Arial; max-width: 700px; margin: auto; padding: 20px; background: #121212; color: #f1f1f1; }
+  h1 { color: #f39c12; text-align: center; margin-bottom: 5px; }
+  #online { text-align: center; font-size: 0.9em; color: #888; margin-bottom: 15px; }
+  #story { border: 2px solid #f39c12; padding: 15px; min-height: 300px; margin-bottom: 15px; background: #1e1e1e; overflow-y: auto; }
   .entry { margin-bottom: 8px; }
   .nick { font-weight: bold; color: #f39c12; }
   .time { font-size: 0.8em; color: #888888; margin-left: 5px; }
-  input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; background: #2a2a2a; border: 1px solid #444; color: #f1f1f1; }
-  button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; cursor: pointer; }
+  input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; background: #2a2a2a; border: 1px solid #444; color: #f1f1f1; border-radius: 5px; }
+  button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; border-radius: 5px; cursor: pointer; }
   button:hover { background: #d35400; }
 </style>
 </head>
 <body>
 
-<h1>Dokończ Historię!</h1>
-<p>Utwórz nową historię lub dokończ istniejącą:</p>
-
+<h1>Dokończ Historię Online!</h1>
+<div id="online">Osób online: 0</div>
 <div id="story"></div>
 
 <input type="text" id="nick" placeholder="Twój nick" />
 <textarea id="text" placeholder="Napisz ciąg dalszy historii..."></textarea>
 <button id="addBtn">Dodaj</button>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
 <script>
+  // Konfiguracja Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCIwYErwoseOBOjaEo6ZGaxqhDoOOUbBk8",
+    authDomain: "historia-af8be.firebaseapp.com",
+    databaseURL: "https://historia-af8be-default-rtdb.firebaseio.com",
+    projectId: "historia-af8be",
+    storageBucket: "historia-af8be.firebasestorage.app",
+    messagingSenderId: "528830401274",
+    appId: "1:528830401274:web:c07897792c165020d81743",
+    measurementId: "G-DHJTCQKT90"
+  };
+
+  // Inicjalizacja Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
   const storyDiv = document.getElementById('story');
   const addBtn = document.getElementById('addBtn');
+  const onlineDiv = document.getElementById('online');
 
-  // Funkcja dodająca wpis do LocalStorage i na stronę
-  function addEntry(nick, text, time) {
-    const entry = { nick, text, time };
-    
-    let story = JSON.parse(localStorage.getItem('story')) || [];
-    story.push(entry);
-    localStorage.setItem('story', JSON.stringify(story));
-    
-    const div = document.createElement('div');
-    div.classList.add('entry');
-    div.innerHTML = `<span class="nick">${nick}</span> <span class="time">[${time}]</span>: ${text}`;
-    storyDiv.appendChild(div);
-    storyDiv.scrollTop = storyDiv.scrollHeight;
-  }
-
-  // Wczytaj historię przy starcie
-  function loadStory() {
-    let story = JSON.parse(localStorage.getItem('story')) || [];
-    storyDiv.innerHTML = '';
-    story.forEach(e => {
-      const div = document.createElement('div');
-      div.classList.add('entry');
-      div.innerHTML = `<span class="nick">${e.nick}</span> <span class="time">[${e.time}]</span>: ${e.text}`;
-      storyDiv.appendChild(div);
-    });
-    storyDiv.scrollTop = storyDiv.scrollHeight;
-  }
-
+  // Dodawanie wpisu
   addBtn.addEventListener('click', () => {
     const nick = document.getElementById('nick').value.trim();
     const text = document.getElementById('text').value.trim();
@@ -67,11 +60,29 @@
     const now = new Date();
     const timeString = now.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' });
 
-    addEntry(nick, text, timeString);
+    db.ref('story').push({ nick, text, time: timeString });
     document.getElementById('text').value = '';
   });
 
-  loadStory();
+  // Wyświetlanie historii w czasie rzeczywistym
+  db.ref('story').on('child_added', snapshot => {
+    const entry = snapshot.val();
+    const div = document.createElement('div');
+    div.classList.add('entry');
+    div.innerHTML = `<span class="nick">${entry.nick}</span> <span class="time">[${entry.time}]</span>: ${entry.text}`;
+    storyDiv.appendChild(div);
+    storyDiv.scrollTop = storyDiv.scrollHeight;
+  });
+
+  // Licznik osób online
+  const onlineRef = db.ref('online');
+  const userRef = onlineRef.push(true); // dodaj użytkownika
+  userRef.onDisconnect().remove();       // usuń po rozłączeniu
+
+  onlineRef.on('value', snapshot => {
+    const count = snapshot.numChildren();
+    onlineDiv.textContent = `Osób online: ${count}`;
+  });
 </script>
 
 </body>
