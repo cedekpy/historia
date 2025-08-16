@@ -4,19 +4,50 @@
 <meta charset="UTF-8">
 <title>Dokończ Historię!</title>
 <style>
-  body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; background: #fff7e6; }
-  h1 { color: #e67e22; text-align: center; }
-  #story { border: 2px solid #e67e22; padding: 15px; min-height: 200px; margin-bottom: 15px; background: #fff3e0; }
+  /* Dark mode */
+  body { 
+    font-family: Arial; 
+    max-width: 600px; 
+    margin: auto; 
+    padding: 20px; 
+    background: #121212; 
+    color: #f1f1f1;
+  }
+  h1 { color: #f39c12; text-align: center; }
+  p { color: #cccccc; }
+  #story { 
+    border: 2px solid #f39c12; 
+    padding: 15px; 
+    min-height: 200px; 
+    margin-bottom: 15px; 
+    background: #1e1e1e; 
+  }
   .entry { margin-bottom: 8px; }
-  .nick { font-weight: bold; color: #d35400; }
-  input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; }
-  button { padding: 10px 20px; font-size: 14px; background: #e67e22; color: white; border: none; cursor: pointer; }
+  .nick { font-weight: bold; color: #f39c12; }
+  .time { font-size: 0.8em; color: #888888; margin-left: 5px; }
+  input, textarea { 
+    width: 100%; 
+    padding: 8px; 
+    margin-bottom: 10px; 
+    font-size: 14px; 
+    background: #2a2a2a; 
+    border: 1px solid #444; 
+    color: #f1f1f1; 
+  }
+  button { 
+    padding: 10px 20px; 
+    font-size: 14px; 
+    background: #f39c12; 
+    color: white; 
+    border: none; 
+    cursor: pointer; 
+  }
   button:hover { background: #d35400; }
 </style>
 </head>
 <body>
 
-<h1>Dokończ Historie!</h1>
+<h1>Dokończ Historię!</h1>
 <p>Utwórz nową historię lub dokończ istniejącą:</p>
 
 <div id="story"></div>
@@ -38,9 +69,13 @@
       return;
     }
 
+    // Pobieramy aktualną datę i godzinę
+    const now = new Date();
+    const timeString = now.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' });
+
     const entry = document.createElement('div');
     entry.classList.add('entry');
-    entry.innerHTML = `<span class="nick">${nick}:</span> ${text}`;
+    entry.innerHTML = `<span class="nick">${nick}</span> <span class="time">[${timeString}]</span>: ${text}`;
     storyDiv.appendChild(entry);
 
     document.getElementById('text').value = '';
