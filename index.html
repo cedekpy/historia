@@ -1,20 +1,23 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
 <title>Dokończ Historię Online!</title>
 <style>
-  body { font-family: Arial; max-width: 700px; margin: auto; padding: 20px; background: #121212; color: #f1f1f1; }
+  body { font-family: Arial; max-width: 800px; margin: auto; padding: 20px; background: #121212; color: #f1f1f1; }
   h1 { color: #f39c12; text-align: center; margin-bottom: 5px; }
   #online { text-align: center; font-size: 0.9em; color: #888; margin-bottom: 15px; }
   #story { border: 2px solid #f39c12; padding: 15px; min-height: 300px; margin-bottom: 15px; background: #1e1e1e; overflow-y: auto; }
-  .entry { margin-bottom: 8px; }
+  .entry { margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #444; cursor: pointer; position: relative; }
   .nick { font-weight: bold; color: #f39c12; }
-  .time { font-size: 0.8em; color: #888888; margin-left: 5px; }
+  .time { font-size: 0.8em; color: #888; margin-left: 5px; }
   input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; background: #2a2a2a; border: 1px solid #444; color: #f1f1f1; border-radius: 5px; }
   button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; border-radius: 5px; cursor: pointer; }
   button:hover { background: #d35400; }
+  .deleteBtn { position: absolute; right: 5px; top: 5px; background: #e74c3c; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; }
+  .deleteBtn:hover { background: #c0392b; }
+  #adminPanel { border: 2px solid #00bfff; padding: 10px; margin-top: 20px; display: none; background: #1a1a1a; }
+  #announcement { text-align: center; font-size: 1em; color: #00bfff; margin-bottom: 15px; }
 </style>
 </head>
 <body>
@@ -26,6 +29,12 @@
 <input type="text" id="nick" placeholder="Twój nick" />
 <textarea id="text" placeholder="Napisz ciąg dalszy historii..."></textarea>
 <button id="addBtn">Dodaj</button>
+<button id="adminBtn">Panel Admina</button>
+
+<div id="adminPanel">
+  <div id="announcement">Ogłoszenie: patrz <a href="https://link.com/paneladmcedek" target="_blank" style="color:#00bfff;">link.com/paneladmcedek</a></div>
+  <button id="clearAllBtn">Usuń całą historię</button>
+</div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -43,48 +52,83 @@
     appId: "1:528830401274:web:c07897792c165020d81743",
     measurementId: "G-DHJTCQKT90"
   };
-
-  // Inicjalizacja Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
   const storyDiv = document.getElementById('story');
   const addBtn = document.getElementById('addBtn');
-  const onlineDiv = document.getElementById('online');
+  const nickInput = document.getElementById('nick');
+  const textInput = document.getElementById('text');
+  const adminBtn = document.getElementById('adminBtn');
+  const adminPanel = document.getElementById('adminPanel');
+  const clearAllBtn = document.getElementById('clearAllBtn');
 
   // Dodawanie wpisu
   addBtn.addEventListener('click', () => {
-    const nick = document.getElementById('nick').value.trim();
-    const text = document.getElementById('text').value.trim();
+    const nick = nickInput.value.trim();
+    const text = textInput.value.trim();
     if (!nick || !text) { alert('Podaj nick i tekst!'); return; }
 
     const now = new Date();
     const timeString = now.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' });
-
     db.ref('story').push({ nick, text, time: timeString });
-    document.getElementById('text').value = '';
+    textInput.value = '';
   });
 
-  // Wyświetlanie historii w czasie rzeczywistym
+  // Wyświetlanie historii
   db.ref('story').on('child_added', snapshot => {
     const entry = snapshot.val();
+    const key = snapshot.key;
     const div = document.createElement('div');
     div.classList.add('entry');
     div.innerHTML = `<span class="nick">${entry.nick}</span> <span class="time">[${entry.time}]</span>: ${entry.text}`;
+    
+    // Kliknięcie powiększa
+    div.addEventListener('click', () => {
+      alert(`${entry.nick} [${entry.time}]:\n\n${entry.text}`);
+    });
+
+    // Jeśli admin, dodaj przycisk usuń
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = "Usuń";
+    deleteBtn.classList.add('deleteBtn');
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('Na pewno usunąć ten wpis?')) {
+        db.ref('story/' + key).remove();
+      }
+    });
+    div.appendChild(deleteBtn);
+
     storyDiv.appendChild(div);
     storyDiv.scrollTop = storyDiv.scrollHeight;
   });
 
   // Licznik osób online
   const onlineRef = db.ref('online');
-  const userRef = onlineRef.push(true); // dodaj użytkownika
-  userRef.onDisconnect().remove();       // usuń po rozłączeniu
-
+  const userRef = onlineRef.push(true);
+  userRef.onDisconnect().remove();
   onlineRef.on('value', snapshot => {
-    const count = snapshot.numChildren();
-    onlineDiv.textContent = `Osób online: ${count}`;
+    onlineDiv.textContent = `Osób online: ${snapshot.numChildren()}`;
+  });
+
+  // Panel admina
+  adminBtn.addEventListener('click', () => {
+    const pass = prompt("Podaj hasło admina:");
+    if (pass === "cedekpaneladm") { // zmień hasło jeśli chcesz
+      adminPanel.style.display = "block";
+      alert("Panel admina aktywowany!");
+    } else {
+      alert("Nieprawidłowe hasło!");
+    }
+  });
+
+  // Usuń całą historię
+  clearAllBtn.addEventListener('click', () => {
+    if (confirm('Na pewno usunąć całą historię?')) {
+      db.ref('story').remove();
+    }
   });
 </script>
-
 </body>
 </html>
