@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Dokończ Historię!</title>
+<style>
+  body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; background: #fff7e6; }
+  h1 { color: #e67e22; text-align: center; }
+  #story { border: 2px solid #e67e22; padding: 15px; min-height: 200px; margin-bottom: 15px; background: #fff3e0; }
+  .entry { margin-bottom: 8px; }
+  .nick { font-weight: bold; color: #d35400; }
+  input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; }
+  button { padding: 10px 20px; font-size: 14px; background: #e67e22; color: white; border: none; cursor: pointer; }
+  button:hover { background: #d35400; }
+</style>
+</head>
+<body>
+
+<h1>Dokończ Historie!</h1>
+<p>Utwórz nową historię lub dokończ istniejącą:</p>
+
+<div id="story"></div>
+
+<input type="text" id="nick" placeholder="Twój nick" />
+<textarea id="text" placeholder="Napisz ciąg dalszy historii..."></textarea>
+<button id="addBtn">Dodaj</button>
+
+<script>
+  const storyDiv = document.getElementById('story');
+  const addBtn = document.getElementById('addBtn');
+
+  addBtn.addEventListener('click', () => {
+    const nick = document.getElementById('nick').value.trim();
+    const text = document.getElementById('text').value.trim();
+
+    if (!nick || !text) {
+      alert('Podaj nick i tekst!');
+      return;
+    }
+
+    const entry = document.createElement('div');
+    entry.classList.add('entry');
+    entry.innerHTML = `<span class="nick">${nick}:</span> ${text}`;
+    storyDiv.appendChild(entry);
+
+    document.getElementById('text').value = '';
+    storyDiv.scrollTop = storyDiv.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
