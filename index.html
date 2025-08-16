@@ -4,44 +4,15 @@
 <meta charset="UTF-8">
 <title>Dokończ Historię!</title>
 <style>
-  /* Dark mode */
-  body { 
-    font-family: Arial; 
-    max-width: 600px; 
-    margin: auto; 
-    padding: 20px; 
-    background: #121212; 
-    color: #f1f1f1;
-  }
+  body { font-family: Arial; max-width: 600px; margin: auto; padding: 20px; background: #121212; color: #f1f1f1; }
   h1 { color: #f39c12; text-align: center; }
   p { color: #cccccc; }
-  #story { 
-    border: 2px solid #f39c12; 
-    padding: 15px; 
-    min-height: 200px; 
-    margin-bottom: 15px; 
-    background: #1e1e1e; 
-  }
+  #story { border: 2px solid #f39c12; padding: 15px; min-height: 200px; margin-bottom: 15px; background: #1e1e1e; }
   .entry { margin-bottom: 8px; }
   .nick { font-weight: bold; color: #f39c12; }
   .time { font-size: 0.8em; color: #888888; margin-left: 5px; }
-  input, textarea { 
-    width: 100%; 
-    padding: 8px; 
-    margin-bottom: 10px; 
-    font-size: 14px; 
-    background: #2a2a2a; 
-    border: 1px solid #444; 
-    color: #f1f1f1; 
-  }
-  button { 
-    padding: 10px 20px; 
-    font-size: 14px; 
-    background: #f39c12; 
-    color: white; 
-    border: none; 
-    cursor: pointer; 
-  }
+  input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; background: #2a2a2a; border: 1px solid #444; color: #f1f1f1; }
+  button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; cursor: pointer; }
   button:hover { background: #d35400; }
 </style>
 </head>
@@ -55,32 +26,65 @@
 <input type="text" id="nick" placeholder="Twój nick" />
 <textarea id="text" placeholder="Napisz ciąg dalszy historii..."></textarea>
 <button id="addBtn">Dodaj</button>
+<button id="resetBtn">Resetuj historię</button>
 
 <script>
   const storyDiv = document.getElementById('story');
   const addBtn = document.getElementById('addBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  // Funkcja dodająca wpis do LocalStorage i na stronę
+  function addEntry(nick, text, time) {
+    const entry = { nick, text, time };
+    
+    // Zapis do LocalStorage
+    let story = JSON.parse(localStorage.getItem('story')) || [];
+    story.push(entry);
+    localStorage.setItem('story', JSON.stringify(story));
+    
+    // Dodaj na stronę
+    const div = document.createElement('div');
+    div.classList.add('entry');
+    div.innerHTML = `<span class="nick">${nick}</span> <span class="time">[${time}]</span>: ${text}`;
+    storyDiv.appendChild(div);
+    storyDiv.scrollTop = storyDiv.scrollHeight;
+  }
+
+  // Wczytaj historię przy starcie
+  function loadStory() {
+    let story = JSON.parse(localStorage.getItem('story')) || [];
+    storyDiv.innerHTML = '';
+    story.forEach(e => {
+      const div = document.createElement('div');
+      div.classList.add('entry');
+      div.innerHTML = `<span class="nick">${e.nick}</span> <span class="time">[${e.time}]</span>: ${e.text}`;
+      storyDiv.appendChild(div);
+    });
+    storyDiv.scrollTop = storyDiv.scrollHeight;
+  }
 
   addBtn.addEventListener('click', () => {
     const nick = document.getElementById('nick').value.trim();
     const text = document.getElementById('text').value.trim();
+    if (!nick || !text) { alert('Podaj nick i tekst!'); return; }
 
-    if (!nick || !text) {
-      alert('Podaj nick i tekst!');
-      return;
-    }
-
-    // Pobieramy aktualną datę i godzinę
     const now = new Date();
     const timeString = now.toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' });
 
-    const entry = document.createElement('div');
-    entry.classList.add('entry');
-    entry.innerHTML = `<span class="nick">${nick}</span> <span class="time">[${timeString}]</span>: ${text}`;
-    storyDiv.appendChild(entry);
-
+    addEntry(nick, text, timeString);
     document.getElementById('text').value = '';
-    storyDiv.scrollTop = storyDiv.scrollHeight;
   });
+
+  // Reset historii
+  resetBtn.addEventListener('click', () => {
+    if(confirm("Na pewno chcesz usunąć całą historię?")) {
+      localStorage.removeItem('story');
+      storyDiv.innerHTML = '';
+    }
+  });
+
+  // Załaduj historię przy starcie
+  loadStory();
 </script>
 
 </body>
