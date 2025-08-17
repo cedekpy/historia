@@ -72,6 +72,8 @@
   const annFrom = document.getElementById('annFrom');
   const onlineDiv = document.getElementById('online');
 
+  let isAdmin = false; // zmienna kontrolująca dostęp do usuwania
+
   // Dodawanie wpisu
   addBtn.addEventListener('click', () => {
     const nick = nickInput.value.trim();
@@ -103,31 +105,35 @@
       }
     });
 
-    // Przyciski usuwania tylko w panelu admina
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = "Usuń";
-    deleteBtn.classList.add('deleteBtn');
-    deleteBtn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      if(confirm('Na pewno usunąć?')){
-        const refPath = isAnnouncement ? 'announcements/' + key : 'story/' + key;
-        db.ref(refPath).remove();
-      }
-    });
-    div.appendChild(deleteBtn);
+    // Przyciski usuwania tylko jeśli jesteś adminem
+    if(isAdmin){
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = "Usuń";
+      deleteBtn.classList.add('deleteBtn');
+      deleteBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(confirm('Na pewno usunąć?')){
+          const refPath = isAnnouncement ? 'announcements/' + key : 'story/' + key;
+          db.ref(refPath).remove();
+        }
+      });
+      div.appendChild(deleteBtn);
+    }
 
     storyDiv.appendChild(div);
     storyDiv.scrollTop = storyDiv.scrollHeight;
   }
 
-  db.ref('story').on('child_added', snap => addEntryToDiv(snap.key, snap.val(), false));
-  db.ref('story').on('child_removed', snap => {
-    storyDiv.innerHTML = ''; 
-    db.ref('story').once('value', ss => ss.forEach(s => addEntryToDiv(s.key, s.val(), false)));
-    db.ref('announcements').once('value', ss => ss.forEach(s => addEntryToDiv(s.key, s.val(), true)));
-  });
+  function renderHistory(){
+    storyDiv.innerHTML = '';
+    db.ref('story').once('value', snap => snap.forEach(s => addEntryToDiv(s.key, s.val(), false)));
+    db.ref('announcements').once('value', snap => snap.forEach(s => addEntryToDiv(s.key, s.val(), true)));
+  }
 
+  db.ref('story').on('child_added', snap => addEntryToDiv(snap.key, snap.val(), false));
   db.ref('announcements').on('child_added', snap => addEntryToDiv(snap.key, snap.val(), true));
+  db.ref('story').on('child_removed', renderHistory);
+  db.ref('announcements').on('child_removed', renderHistory);
 
   // Licznik osób online
   const onlineRef = db.ref('online');
@@ -140,8 +146,12 @@
   // Panel admina
   adminBtn.addEventListener('click', ()=>{
     const pass = prompt("Podaj hasło admina:");
-    if(pass === "cedekpaneladm"){ adminPanel.style.display="block"; alert("Panel aktywowany!"); }
-    else alert("Nieprawidłowe hasło!");
+    if(pass === "cedekpaneladm"){
+      isAdmin = true;
+      adminPanel.style.display="block";
+      alert("Panel aktywowany!");
+      renderHistory(); // odśwież, aby przyciski Usuń się pojawiły
+    } else alert("Nieprawidłowe hasło!");
   });
 
   // Usuń całą historię
