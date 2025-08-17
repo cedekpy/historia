@@ -8,16 +8,15 @@
   h1 { color: #f39c12; text-align: center; margin-bottom: 5px; }
   #online { text-align: center; font-size: 0.9em; color: #888; margin-bottom: 15px; }
   #story { border: 2px solid #f39c12; padding: 15px; min-height: 300px; margin-bottom: 15px; background: #1e1e1e; overflow-y: auto; }
-  .entry { margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #444; cursor: pointer; position: relative; }
+  .entry, .announcement-entry { margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #444; cursor: pointer; position: relative; }
   .nick { font-weight: bold; color: #f39c12; }
   .time { font-size: 0.8em; color: #888; margin-left: 5px; }
   input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; font-size: 14px; background: #2a2a2a; border: 1px solid #444; color: #f1f1f1; border-radius: 5px; }
-  button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; border-radius: 5px; cursor: pointer; }
+  button { padding: 10px 20px; font-size: 14px; background: #f39c12; color: white; border: none; border-radius: 5px; cursor: pointer; margin-bottom:5px; }
   button:hover { background: #d35400; }
   .deleteBtn { position: absolute; right: 5px; top: 5px; background: #e74c3c; color: white; border: none; border-radius: 3px; padding: 2px 6px; cursor: pointer; }
   .deleteBtn:hover { background: #c0392b; }
   #adminPanel { border: 2px solid #00bfff; padding: 10px; margin-top: 20px; display: none; background: #1a1a1a; }
-  #announcement { text-align: center; font-size: 1em; color: #00bfff; margin-bottom: 15px; }
 </style>
 </head>
 <body>
@@ -32,7 +31,12 @@
 <button id="adminBtn">Panel Admina</button>
 
 <div id="adminPanel">
-  <div id="announcement">Ogłoszenie: patrz <a href="https://link.com/paneladmcedek" target="_blank" style="color:#00bfff;">link.com/paneladmcedek</a></div>
+  <h2>Panel Admina</h2>
+  <h3>Dodaj ogłoszenie</h3>
+  <input type="text" id="annTitle" placeholder="NAZWA">
+  <textarea id="annDesc" placeholder="OPIS"></textarea>
+  <input type="text" id="annFrom" placeholder="OD">
+  <button id="addAnnBtn">Dodaj ogłoszenie</button>
   <button id="clearAllBtn">Usuń całą historię</button>
 </div>
 
@@ -62,6 +66,11 @@
   const adminBtn = document.getElementById('adminBtn');
   const adminPanel = document.getElementById('adminPanel');
   const clearAllBtn = document.getElementById('clearAllBtn');
+  const addAnnBtn = document.getElementById('addAnnBtn');
+  const annTitle = document.getElementById('annTitle');
+  const annDesc = document.getElementById('annDesc');
+  const annFrom = document.getElementById('annFrom');
+  const onlineDiv = document.getElementById('online');
 
   // Dodawanie wpisu
   addBtn.addEventListener('click', () => {
@@ -75,34 +84,50 @@
     textInput.value = '';
   });
 
-  // Wyświetlanie historii
-  db.ref('story').on('child_added', snapshot => {
-    const entry = snapshot.val();
-    const key = snapshot.key;
+  // Wyświetlanie historii i ogłoszeń
+  function addEntryToDiv(key, data, isAnnouncement=false){
     const div = document.createElement('div');
-    div.classList.add('entry');
-    div.innerHTML = `<span class="nick">${entry.nick}</span> <span class="time">[${entry.time}]</span>: ${entry.text}`;
-    
-    // Kliknięcie powiększa
+    div.classList.add(isAnnouncement ? 'announcement-entry' : 'entry');
+    if(isAnnouncement){
+      div.innerHTML = `<strong>${data.title}</strong> [${data.from}]: ${data.desc}`;
+    } else {
+      div.innerHTML = `<span class="nick">${data.nick}</span> <span class="time">[${data.time}]</span>: ${data.text}`;
+    }
+
+    // Powiększenie po kliknięciu
     div.addEventListener('click', () => {
-      alert(`${entry.nick} [${entry.time}]:\n\n${entry.text}`);
+      if(isAnnouncement){
+        alert(`${data.title} [${data.from}]:\n\n${data.desc}`);
+      } else {
+        alert(`${data.nick} [${data.time}]:\n\n${data.text}`);
+      }
     });
 
-    // Jeśli admin, dodaj przycisk usuń
+    // Przyciski usuwania tylko w panelu admina
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = "Usuń";
     deleteBtn.classList.add('deleteBtn');
-    deleteBtn.addEventListener('click', (e) => {
+    deleteBtn.addEventListener('click', (e)=>{
       e.stopPropagation();
-      if (confirm('Na pewno usunąć ten wpis?')) {
-        db.ref('story/' + key).remove();
+      if(confirm('Na pewno usunąć?')){
+        const refPath = isAnnouncement ? 'announcements/' + key : 'story/' + key;
+        db.ref(refPath).remove();
       }
     });
     div.appendChild(deleteBtn);
 
     storyDiv.appendChild(div);
     storyDiv.scrollTop = storyDiv.scrollHeight;
+  }
+
+  db.ref('story').on('child_added', snap => addEntryToDiv(snap.key, snap.val(), false));
+  db.ref('story').on('child_removed', snap => {
+    storyDiv.innerHTML = ''; 
+    db.ref('story').once('value', ss => ss.forEach(s => addEntryToDiv(s.key, s.val(), false)));
+    db.ref('announcements').once('value', ss => ss.forEach(s => addEntryToDiv(s.key, s.val(), true)));
   });
+
+  db.ref('announcements').on('child_added', snap => addEntryToDiv(snap.key, snap.val(), true));
 
   // Licznik osób online
   const onlineRef = db.ref('online');
@@ -113,21 +138,28 @@
   });
 
   // Panel admina
-  adminBtn.addEventListener('click', () => {
+  adminBtn.addEventListener('click', ()=>{
     const pass = prompt("Podaj hasło admina:");
-    if (pass === "cedekpaneladm") { // zmień hasło jeśli chcesz
-      adminPanel.style.display = "block";
-      alert("Panel admina aktywowany!");
-    } else {
-      alert("Nieprawidłowe hasło!");
-    }
+    if(pass === "cedekpaneladm"){ adminPanel.style.display="block"; alert("Panel aktywowany!"); }
+    else alert("Nieprawidłowe hasło!");
   });
 
   // Usuń całą historię
-  clearAllBtn.addEventListener('click', () => {
-    if (confirm('Na pewno usunąć całą historię?')) {
+  clearAllBtn.addEventListener('click', ()=>{
+    if(confirm('Na pewno usunąć całą historię?')){
       db.ref('story').remove();
+      db.ref('announcements').remove();
     }
+  });
+
+  // Dodawanie ogłoszenia
+  addAnnBtn.addEventListener('click', ()=>{
+    const title = annTitle.value.trim();
+    const desc = annDesc.value.trim();
+    const from = annFrom.value.trim();
+    if(!title || !desc || !from){ alert("Wypełnij wszystkie pola!"); return; }
+    db.ref('announcements').push({ title, desc, from });
+    annTitle.value = ''; annDesc.value = ''; annFrom.value = '';
   });
 </script>
 </body>
